@@ -1,0 +1,52 @@
+定义：保证一个类仅有一个实例，并提供一个全局访问点
+类型：创建型
+适用场景：像确保任何情况下都绝对只有一个实例，单服务器环境采用单例完成计数器
+         功能，分布式环境需要适用共享计数器
+优点：1.在内存里只有一个实例，减少了内存开销 2.可以避免对资源的多重占用 3.设
+     置全局访问点，严格控制访问
+缺点：没有接口，扩展困难
+重点：1.私有构造器 2.线程安全 3.延迟加载 4.序列化和反序列化安全 5.反射
+
+public static LazySingleton getInstance() {
+    if(lazySingleton == null) {
+        lazySingleton = new LazySingleton();
+    }
+    return lazySingleton;
+}
+使用synchronized保护可以解决
+多个线程同时执行到lazySingleton = new LazySingleton();如果最后一个线程执行
+前都没有线程返回那么会返回相同的对象，如果不同线程返回顺序不同就会返回不同对象
+
+双重检查，降低锁粒度
+public static LazySingleton getInstance() {
+    if(lazySingleton == null) {
+        synchronized(LazySingleton.class) {
+            if(lazySingleton == null) {
+                lazySingleton = new LazySingleton();
+            }
+        }
+    }
+    return lazySingleton;
+}
+synchronized内部需要包裹一层判断，防止线程串行时第一个线程成功创建了，第二个线程
+有创建一个
+使用volitale关键字，防止重排序，创建对象需要三步：1.分配空间 2.初始化对象 3.设
+置初始化的对象指向分配的空间，当重排序发生2、3的顺序颠倒，此时其他线程执行就会发
+现instance!=null但这个对象并没有指向分配的空间并且之后也不会分配空间
+操作volitale变量时，其他线程中的内存中保存的volitale变量会失效只能从共享内存中取
+volitale可以保证线程内存修改后同步写到共享内存中。
+
+public class StaticInnerClassSingleton {
+    private static class InnerClass {
+        private static StaticInnerClassSingleton staticInnerClassSingleton = new StaticInnerClassSingleton();
+    }
+
+    public static StaticInnerClassSingleton getInstance() {
+        return InnerClass.staticInnerClassSingleton;
+    }
+}
+使用静态内部类，利用JVM对class对象的初始化锁防止并发问题，让其他线程看不到重排序
+
+导致顶级类A被初始化：1.有一个A类型的实例被创建 2.A类中有一个声明的静态方法被调用
+                   3.A类中声明的静态成员被赋值 4.A类中声明的成员被使用并且这个
+                   成员不是常量成员
